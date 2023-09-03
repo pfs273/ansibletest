@@ -7,16 +7,26 @@
   - name: install updates (CentOS)
     tags: always
     dnf:
-      update_only: yes
       update_cache: yes
+    changed_when: false
     when: ansible_distribution == "CentOS"
 
   - name: install updates (Debian)
     tags: always
     apt:
-      upgrade: dist
       update_cache: yes
+    changed_when: false
     when: ansible_distribution == "Debian"
+
+- hosts: all
+  become: true
+  tasks:
+
+  - name: add ssh key for simone (ansible pub key)
+    tags: always
+    authorized_key:
+      user: simone
+      key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINPWMCa2YJBp+TO0rZNK7nO7escs628Ss999V905qYy5 ansible"
 
 - hosts: workstations
   become: true
@@ -47,6 +57,7 @@
         - libapache2-mod-php
       state: latest
     when: ansible_distribution == "Debian"
+    register: apache2
 
   - name: install httpd, php packages CentOS
     tags: apache,centos,httpd
@@ -55,6 +66,14 @@
         - httpd
         - php
       state: latest
+    when: ansible_distribution == "CentOS"
+
+  - name: start httpd (CentOS)
+    tags: apache,centos,httpd
+    service:
+      name: httpd
+      state: started
+      enabled: yes
     when: ansible_distribution == "CentOS"
 
   - name: copy default html file for site to server
@@ -95,3 +114,17 @@
       name: samba
       state: latest
 
+  - name: Modify config file using lineinfile module - Video 12
+    tags: debian
+    lineinfile:
+      path: /home/ps/testfile
+      regexp: '^someuser'
+      line: threeusers@somewhere.net
+    when: ansible_distribution == "Debian"
+
+#  - name: restart apache2 (Debian)
+#    tags: debian,apache2
+#    service:
+#      name: apache2
+#      state: restarted
+#      when: apache2.changed
